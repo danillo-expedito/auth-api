@@ -21,3 +21,7 @@ Thumbs.db
 .vscode/
 .idea/
 /src/generated/prisma
+
+# Prisma
+prisma/migrations/dev.db
+prisma/migrations/dev.db-journal
