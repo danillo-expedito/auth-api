@@ -3,6 +3,7 @@ import request from 'supertest';
 import express from 'express';
 import authRouter from '../../src/routes/auth.routes';
 import { userRepository } from '../../src/repositories/user.repository';
+import { Prisma } from '../../src/generated/prisma';
 
 const app = express();
 app.use(express.json());
@@ -84,6 +85,30 @@ describe('POST /auth/register - Validation Middleware', () => {
 
         expect(response.status).toBe(400);
         expect(response.body.errors[0].campo).toBe('name');
+    });
+
+    it('should return 409 if the email is already registered', async () => {
+        const prismaError = new Prisma.PrismaClientKnownRequestError(
+            'Unique constraint failed on the fields: (`email`)',
+            {
+                code: 'P2002',
+                clientVersion: '5.0.0',
+            },
+        );
+
+        vi.mocked(userRepository.findByEmail).mockResolvedValue(null);
+        vi.mocked(userRepository.create).mockRejectedValue(prismaError);
+
+        const response = await request(app).post('/auth/register').send({
+            name: 'Rafaela Silva',
+            email: 'rsilva@email.com',
+            password: 'A1234567@',
+        });
+
+        expect(response.status).toBe(409);
+        expect(response.body).toStrictEqual({
+            message: 'Este e-mail já se encontra registrado.',
+        });
     });
 
     it('should return 201 and user data without password on success', async () => {
