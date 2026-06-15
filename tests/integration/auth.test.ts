@@ -106,8 +106,15 @@ describe('POST /auth/register - Validation Middleware', () => {
         });
 
         expect(response.status).toBe(201);
-        expect(response.body).toHaveProperty('name', 'Arthur Morgan');
-        expect(response.body).toHaveProperty('email', 'red@email.com');
-        expect(response.body).not.toHaveProperty('password');
+        expect(response.body).toStrictEqual({
+            id: expect.any(String),
+            name: 'Arthur Morgan',
+            email: 'red@email.com',
+            createdAt: expect.any(String),
+            updatedAt: expect.any(String),
+        });
+
+        expect(response.body.passwordHash).toBeUndefined();
+        expect(response.body.password).toBeUndefined();
     });
 });
