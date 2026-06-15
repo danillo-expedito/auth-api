@@ -1,8 +1,8 @@
-import { Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import { userService } from '../services/user.service';
 
 export class AuthController {
-    async createUser(req: Request, res: Response) {
+    async createUser(req: Request, res: Response, next: NextFunction) {
         const { name, email, password } = req.body;
 
         try {
@@ -11,25 +11,9 @@ export class AuthController {
                 email,
                 password,
             );
-
             return res.status(201).json(newUser);
         } catch (error: unknown) {
-            if (error && typeof error === 'object' && 'code' in error) {
-                if (error.code === 'P2002') {
-                    return res.status(409).json({
-                        message: 'Este e-mail já se encontra registrado.',
-                    });
-                }
-
-                return res.status(400).json({
-                    message: 'Erro na operação de base de dados.',
-                });
-            }
-
-            if (error instanceof Error) {
-                return res.status(400).json({ message: error.message });
-            }
-            return res.status(500).json({ message: 'Internal server error' });
+            next(error);
         }
     }
 }

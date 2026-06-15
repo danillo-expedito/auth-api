@@ -1,13 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import request from 'supertest';
-import express from 'express';
-import authRouter from '../../src/routes/auth.routes';
+import app from '../../src/app';
 import { userRepository } from '../../src/repositories/user.repository';
-import { Prisma } from '../../src/generated/prisma';
-
-const app = express();
-app.use(express.json());
-app.use('/auth', authRouter);
 
 vi.mock('../../src/repositories/user.repository');
 
@@ -88,16 +82,13 @@ describe('POST /auth/register - Validation Middleware', () => {
     });
 
     it('should return 409 if the email is already registered', async () => {
-        const prismaError = new Prisma.PrismaClientKnownRequestError(
-            'Unique constraint failed on the fields: (`email`)',
-            {
-                code: 'P2002',
-                clientVersion: '5.0.0',
-            },
-        );
+        const mockedPrismaError = {
+            message: 'Unique constraint failed',
+            code: 'P2002',
+        };
 
         vi.mocked(userRepository.findByEmail).mockResolvedValue(null);
-        vi.mocked(userRepository.create).mockRejectedValue(prismaError);
+        vi.mocked(userRepository.create).mockRejectedValue(mockedPrismaError);
 
         const response = await request(app).post('/auth/register').send({
             name: 'Rafaela Silva',
@@ -107,7 +98,7 @@ describe('POST /auth/register - Validation Middleware', () => {
 
         expect(response.status).toBe(409);
         expect(response.body).toStrictEqual({
-            message: 'Este e-mail já se encontra registrado.',
+            message: 'Este e-mail está registrado em outra conta.',
         });
     });
 

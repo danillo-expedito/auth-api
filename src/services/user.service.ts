@@ -1,5 +1,6 @@
 import { userRepository } from '../repositories/user.repository';
 import { IUserResponse } from '../interfaces/user.interface';
+import { ConflictError } from '../errors/ConflictError';
 import bcrypt from 'bcryptjs';
 
 export class UserService {
@@ -10,7 +11,9 @@ export class UserService {
     ): Promise<IUserResponse> {
         const existingUser = await userRepository.findByEmail(email);
         if (existingUser) {
-            throw new Error('Invalid credentials');
+            throw new ConflictError(
+                'Este e-mail está registrado em outra conta.',
+            );
         }
 
         const hash = await bcrypt.hash(password, 10);
