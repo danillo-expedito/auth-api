@@ -14,6 +14,18 @@ export class AuthController {
 
             return res.status(201).json(newUser);
         } catch (error: unknown) {
+            if (error && typeof error === 'object' && 'code' in error) {
+                if (error.code === 'P2002') {
+                    return res.status(409).json({
+                        message: 'Este e-mail já se encontra registrado.',
+                    });
+                }
+
+                return res.status(400).json({
+                    message: 'Erro na operação de base de dados.',
+                });
+            }
+
             if (error instanceof Error) {
                 return res.status(400).json({ message: error.message });
             }
