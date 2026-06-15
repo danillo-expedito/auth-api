@@ -8,13 +8,7 @@ const app = express();
 app.use(express.json());
 app.use('/auth', authRouter);
 
-// MOCK
-vi.mock('../../src/repositories/user.repository', () => ({
-    userRepository: {
-        findByEmail: vi.fn(),
-        create: vi.fn(),
-    },
-}));
+vi.mock('../../src/repositories/user.repository');
 
 describe('POST /auth/register - Validation Middleware', () => {
     beforeEach(() => {
