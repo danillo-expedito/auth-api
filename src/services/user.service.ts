@@ -1,8 +1,8 @@
 import { userRepository } from '../repositories/user.repository';
 import bcrypt from 'bcryptjs';
 
-export const userService = {
-    registerUser: async (name: string, email: string, password: string) => {
+export class UserService {
+    async registerUser(name: string, email: string, password: string) {
         const existingUser = await userRepository.findByEmail(email);
         if (existingUser) {
             throw new Error('Invalid credentials');
@@ -20,5 +20,7 @@ export const userService = {
             await userRepository.create(newUser);
 
         return userWithoutPassword;
-    },
-};
+    }
+}
+
+export const userService = new UserService();
