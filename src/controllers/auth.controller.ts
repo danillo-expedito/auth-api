@@ -1,8 +1,8 @@
 import { Request, Response } from 'express';
 import { userService } from '../services/user.service';
 
-export const authController = {
-    createUser: async (req: Request, res: Response) => {
+export class AuthController {
+    async createUser(req: Request, res: Response) {
         const { name, email, password } = req.body;
 
         try {
@@ -19,5 +19,7 @@ export const authController = {
             }
             return res.status(500).json({ message: 'Internal server error' });
         }
-    },
-};
+    }
+}
+
+export const authController = new AuthController();
