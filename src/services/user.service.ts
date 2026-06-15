@@ -1,8 +1,13 @@
 import { userRepository } from '../repositories/user.repository';
+import { IUserResponse } from '../interfaces/user.interface';
 import bcrypt from 'bcryptjs';
 
 export class UserService {
-    async registerUser(name: string, email: string, password: string) {
+    async registerUser(
+        name: string,
+        email: string,
+        password: string,
+    ): Promise<IUserResponse> {
         const existingUser = await userRepository.findByEmail(email);
         if (existingUser) {
             throw new Error('Invalid credentials');

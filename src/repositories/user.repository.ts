@@ -1,5 +1,10 @@
 import { Prisma } from '../generated/prisma';
 import { prisma } from '../config/prisma';
+import {
+    IUser,
+    IUserRegister,
+    IUserResponse,
+} from '../interfaces/user.interface';
 
 export class UserRepository {
     async findByEmail(email: string) {
@@ -18,7 +23,7 @@ export class UserRepository {
         return user;
     }
 
-    async create(data: Prisma.UserCreateInput) {
+    async create(data: IUserRegister) {
         return await prisma.user.create({
             data,
         });
