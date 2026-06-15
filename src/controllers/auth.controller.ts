@@ -16,6 +16,18 @@ export class AuthController {
             next(error);
         }
     }
+
+    async login(req: Request, res: Response, next: NextFunction) {
+        const { email, password } = req.body;
+
+        try {
+            const token = await userService.loginUser(email, password);
+
+            return res.status(200).json({ token });
+        } catch (error: unknown) {
+            next(error);
+        }
+    }
 }
 
 export const authController = new AuthController();
