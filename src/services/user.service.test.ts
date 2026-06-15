@@ -39,7 +39,7 @@ describe('UserService - registerUser (Unit Test)', () => {
         });
     });
 
-    it('should throw an error "Invalid credentials" if email already exists', async () => {
+    it('should throw an error "e-mail already in use" if email already exists', async () => {
         const mockDate = new Date();
 
         vi.mocked(userRepository.findByEmail).mockResolvedValue({
@@ -57,7 +57,7 @@ describe('UserService - registerUser (Unit Test)', () => {
                 'marta@email.com',
                 'Password123@',
             ),
-        ).rejects.toThrow('Invalid credentials');
+        ).rejects.toThrow('Este e-mail está registrado em outra conta.');
 
         expect(userRepository.create).not.toHaveBeenCalled();
     });
