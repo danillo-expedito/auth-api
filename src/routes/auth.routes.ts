@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction, Router } from 'express';
 import { authController } from '../controllers/auth.controller';
-import { validateRegister } from '../models/auth.schema';
+import { validateLogin, validateRegister } from '../models/auth.schema';
 import { createRateLimiter } from '../middlewares/rate-limiter.middleware';
 
 const router: Router = Router();
@@ -25,6 +25,6 @@ router.post(
     authController.createUser,
 );
 
-router.post('/login', loginLimiter, authController.login);
+router.post('/login', loginLimiter, validateLogin, authController.login);
 
 export default router;
