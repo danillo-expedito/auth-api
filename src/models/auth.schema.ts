@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { z, ZodError } from 'zod';
+import { z } from 'zod';
 
 export const registerSchema = z.object({
     name: z.string().min(2),
@@ -15,17 +15,25 @@ export const registerSchema = z.object({
         ),
 });
 
-export const validateRegister = (
-    req: Request,
-    res: Response,
-    next: NextFunction,
-) => {
-    try {
-        const result = registerSchema.safeParse(req.body);
+export const loginSchema = z.object({
+    email: z
+        .string()
+        .regex(
+            /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
+            'Formato de e-mail inválido.',
+        ),
+    password: z.string().min(1, 'A senha é obrigatória'),
+});
 
+const createValidationMiddleware = (
+    schema: z.ZodSchema,
+    errorMessage: string,
+) => {
+    return (req: Request, res: Response, next: NextFunction) => {
+        const result = schema.safeParse(req.body);
         if (!result.success) {
             return res.status(400).json({
-                message: 'Dados de registro inválidos.',
+                message: errorMessage,
                 errors: result.error.issues.map((err) => ({
                     campo: err.path.join(''),
                     mensagem: err.message,
@@ -33,7 +41,15 @@ export const validateRegister = (
             });
         }
         return next();
-    } catch (error) {
-        return res.status(500).json({ message: 'Erro interno na validação.' });
-    }
+    };
 };
+
+export const validateRegister = createValidationMiddleware(
+    registerSchema,
+    'Dados de registro inválidos.',
+);
+
+export const validateLogin = createValidationMiddleware(
+    loginSchema,
+    'Dados de login inválidos.',
+);
