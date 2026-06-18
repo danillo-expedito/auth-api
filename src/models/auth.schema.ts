@@ -16,7 +16,12 @@ export const registerSchema = z.object({
 });
 
 export const loginSchema = z.object({
-    email: z.string().regex(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/),
+    email: z
+        .string()
+        .regex(
+            /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
+            'Formato de e-mail inválido.',
+        ),
     password: z.string().min(1, 'A senha é obrigatória'),
 });
 

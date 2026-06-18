@@ -1,26 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { userService } from './user.service';
 import { userRepository } from '../repositories/user.repository';
+import {
+    mockUser,
+    mockDate,
+    unauthorizedError,
+} from './fixtures/user.fixtures';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
 vi.mock('../repositories/user.repository');
 vi.mock('bcryptjs');
 vi.mock('jsonwebtoken');
-
-const mockDate = new Date('2026-06-15T12:00:00.000Z');
-const mockUser = {
-    id: 'uuid-123',
-    name: 'Leon Kennedy',
-    email: 'leon@email.com',
-    password: 'hash-da-senha',
-    createdAt: mockDate,
-    updatedAt: mockDate,
-};
-const unauthorizedError = {
-    message: 'Invalid credentials',
-    statusCode: 401,
-};
 
 describe('UserService - registerUser (Unit Test)', () => {
     beforeEach(() => {

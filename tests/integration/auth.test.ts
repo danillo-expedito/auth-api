@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import request from 'supertest';
 import app from '../../src/app';
 import { userRepository } from '../../src/repositories/user.repository';
-
+import { mockUser, mockDate } from '../../src/services/fixtures/user.fixtures';
 vi.mock('../../src/repositories/user.repository');
 
 describe('POST /auth/register - Validation Middleware', () => {
@@ -103,7 +103,6 @@ describe('POST /auth/register - Validation Middleware', () => {
     });
 
     it('should return 201 and user data without password on success', async () => {
-        const mockDate = new Date('2026-06-15T12:00:00.000Z');
         vi.mocked(userRepository.findByEmail).mockResolvedValue(null);
 
         vi.mocked(userRepository.create).mockResolvedValue({
@@ -132,5 +131,83 @@ describe('POST /auth/register - Validation Middleware', () => {
 
         expect(response.body.passwordHash).toBeUndefined();
         expect(response.body.password).toBeUndefined();
+    });
+});
+
+describe('POST /auth/login', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it('should return 200 and a JWT token when valid credentials are provided', async () => {
+        vi.mocked(userRepository.findByEmail).mockResolvedValue(mockUser);
+
+        const response = await request(app).post('/auth/login').send({
+            email: 'leon@email.com',
+            password: 'Password123@',
+        });
+
+        expect(response.status).toBe(200);
+        expect(response.body).toHaveProperty('token');
+        expect(response.body.token).toMatch(
+            /^[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+$/,
+        );
+    });
+
+    it('should return 401 when the email does not exist in the database', async () => {
+        vi.mocked(userRepository.findByEmail).mockResolvedValue(null);
+
+        const response = await request(app).post('/auth/login').send({
+            email: 'azura@email.com',
+            password: 'Password123@',
+        });
+
+        expect(response.status).toBe(401);
+        expect(response.body).toStrictEqual({
+            message: 'Invalid credentials',
+        });
+    });
+
+    it('should return 401 when the password is incorrect', async () => {
+        vi.mocked(userRepository.findByEmail).mockResolvedValue(mockUser);
+
+        const response = await request(app).post('/auth/login').send({
+            email: 'leon@email.com',
+            password: 'Wrongpassword123',
+        });
+
+        expect(response.status).toBe(401);
+        expect(response.body).toStrictEqual({
+            message: 'Invalid credentials',
+        });
+    });
+
+    it('should return 400 when the email format is invalid (Zod)', async () => {
+        const response = await request(app).post('/auth/login').send({
+            email: 'leon-emailcom',
+            password: 'Password123@',
+        });
+
+        expect(response.status).toBe(400);
+        expect(response.body.message).toBe('Dados de login inválidos.');
+        expect(response.body.errors[0].campo).toBe('email');
+    });
+
+    it('should return 400 when the password field is missing from the payload (Zod)', async () => {
+        const response = await request(app).post('/auth/login').send({
+            email: 'leon@email.com',
+            password: '',
+        });
+
+        expect(response.status).toBe(400);
+        expect(response.body).toStrictEqual({
+            errors: [
+                {
+                    campo: 'password',
+                    mensagem: 'A senha é obrigatória',
+                },
+            ],
+            message: 'Dados de login inválidos.',
+        });
     });
 });
