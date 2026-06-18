@@ -8,7 +8,13 @@ export interface IUser {
 }
 
 export interface IUserRegister extends Pick<IUser, 'name' | 'email'> {
-    password: string;
+    passwordHash: string;
+}
+
+export interface IUserCreate {
+    name: string;
+    email: string;
+    passwordHash: string;
 }
 
 export type IUserResponse = Omit<IUser, 'passwordHash'>;

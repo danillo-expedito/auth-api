@@ -108,7 +108,7 @@ describe('POST /auth/register - Validation Middleware', () => {
         vi.mocked(userRepository.create).mockResolvedValue({
             name: 'Arthur Morgan',
             email: 'red@email.com',
-            password: 'senha_encriptada_hash',
+            passwordHash: 'senha_encriptada_hash',
             id: 'uuid-1234',
             createdAt: mockDate,
             updatedAt: mockDate,
