@@ -1,11 +1,6 @@
 import { Prisma } from '../generated/prisma';
 import { prisma } from '../config/prisma';
-import {
-    IUser,
-    IUserCreate,
-    IUserRegister,
-    IUserResponse,
-} from '../interfaces/user.interface';
+import { IUser, IUserCreate } from '../interfaces/user.interface';
 
 export class UserRepository {
     async findByEmail(email: string): Promise<IUser | null> {

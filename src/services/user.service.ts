@@ -4,8 +4,14 @@ import { ConflictError } from '../errors/ConflictError';
 import bcrypt from 'bcryptjs';
 import { UnauthorizedError } from '../errors/UnauthorizedError';
 import jwt from 'jsonwebtoken';
-import { JWT_EXPIRES_IN, JWT_SECRET } from '../config/env';
+import {
+    JWT_REFRESH_EXPIRES_IN,
+    JWT_EXPIRES_IN,
+    JWT_SECRET,
+    calculateRefreshExpiresAt,
+} from '../config/env';
 import { NotFoundError } from '../errors/NotFoundError';
+import { refreshTokenRepository } from '../repositories/refresh-token.repository';
 
 // Hash fixo usado para mitigar timing attacks quando o usuário não existe
 // (gerado com bcrypt.hashSync('dummy_password', 10))
@@ -51,11 +57,19 @@ export class UserService {
             throw new UnauthorizedError('Invalid credentials');
         }
 
-        const token = jwt.sign({ id: user.id }, JWT_SECRET, {
+        const accessToken = jwt.sign({ id: user.id }, JWT_SECRET, {
             expiresIn: JWT_EXPIRES_IN,
         });
 
-        return token;
+        const refreshToken = jwt.sign({ id: user.id }, JWT_SECRET, {
+            expiresIn: JWT_REFRESH_EXPIRES_IN,
+        });
+
+        const expiresAt = calculateRefreshExpiresAt();
+
+        await refreshTokenRepository.create(user.id, refreshToken, expiresAt);
+
+        return { accessToken, refreshToken };
     }
 
     async getMe(id: string) {
