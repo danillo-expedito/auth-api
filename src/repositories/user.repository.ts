@@ -2,12 +2,13 @@ import { Prisma } from '../generated/prisma';
 import { prisma } from '../config/prisma';
 import {
     IUser,
+    IUserCreate,
     IUserRegister,
     IUserResponse,
 } from '../interfaces/user.interface';
 
 export class UserRepository {
-    async findByEmail(email: string) {
+    async findByEmail(email: string): Promise<IUser | null> {
         const user = await prisma.user.findUnique({
             where: { email },
         });
@@ -23,7 +24,7 @@ export class UserRepository {
         return user;
     }
 
-    async create(data: IUserRegister) {
+    async create(data: IUserCreate): Promise<IUser> {
         return await prisma.user.create({
             data,
         });

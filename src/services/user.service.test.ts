@@ -26,7 +26,7 @@ describe('UserService - registerUser (Unit Test)', () => {
             id: 'uuid-789',
             name: 'Silmara Passos',
             email: 'silmara@email.com',
-            password: 'senha_encriptada',
+            passwordHash: 'senha_encriptada',
             createdAt: mockDate,
             updatedAt: mockDate,
         });
@@ -89,7 +89,7 @@ describe('UserService - loginUser (Unit Test)', () => {
         );
         expect(bcrypt.compare).toHaveBeenCalledWith(
             'password123',
-            mockUser.password,
+            mockUser.passwordHash,
         );
 
         expect(jwt.sign).toHaveBeenCalledWith(

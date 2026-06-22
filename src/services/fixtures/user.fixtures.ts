@@ -4,7 +4,8 @@ export const mockUser = {
     id: 'uuid-123',
     name: 'Leon Kennedy',
     email: 'leon@email.com',
-    password: '$2b$10$UkVvlyTi3sW42dgXKwF.mOPCYExgONtZHEpKmHItD9.NDA33S0Ig6',
+    passwordHash:
+        '$2b$10$UkVvlyTi3sW42dgXKwF.mOPCYExgONtZHEpKmHItD9.NDA33S0Ig6',
     createdAt: mockDate,
     updatedAt: mockDate,
 };

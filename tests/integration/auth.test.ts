@@ -3,6 +3,8 @@ import request from 'supertest';
 import app from '../../src/app';
 import { userRepository } from '../../src/repositories/user.repository';
 import { mockUser, mockDate } from '../../src/services/fixtures/user.fixtures';
+import jwt from 'jsonwebtoken';
+
 vi.mock('../../src/repositories/user.repository');
 
 describe('POST /auth/register - Validation Middleware', () => {
@@ -108,7 +110,7 @@ describe('POST /auth/register - Validation Middleware', () => {
         vi.mocked(userRepository.create).mockResolvedValue({
             name: 'Arthur Morgan',
             email: 'red@email.com',
-            password: 'senha_encriptada_hash',
+            passwordHash: 'senha_encriptada_hash',
             id: 'uuid-1234',
             createdAt: mockDate,
             updatedAt: mockDate,
@@ -208,6 +210,76 @@ describe('POST /auth/login', () => {
                 },
             ],
             message: 'Dados de login inválidos.',
+        });
+    });
+});
+
+describe('GET /auth/me - Protected User Profile Route', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it('should return 200 and user data when a valid token is provided', async () => {
+        const token = jwt.sign(
+            { id: mockUser.id },
+            process.env.JWT_SECRET as string,
+            { expiresIn: '1h' },
+        );
+
+        vi.mocked(userRepository.findById).mockResolvedValue(mockUser);
+
+        const response = await request(app)
+            .get('/users/me')
+            .set('Authorization', `Bearer ${token}`);
+
+        expect(response.status).toBe(200);
+        expect(response.body).toStrictEqual({
+            id: mockUser.id,
+            name: mockUser.name,
+            email: mockUser.email,
+            createdAt: mockDate.toISOString(),
+            updatedAt: mockDate.toISOString(),
+        });
+    });
+
+    it('should return 401 when the token is not provided in the headers', async () => {
+        const response = await request(app).get('/users/me');
+
+        expect(response.status).toBe(401);
+        expect(response.body).toStrictEqual({
+            message: 'Token não fornecido.',
+        });
+        expect(userRepository.findById).not.toHaveBeenCalled();
+    });
+
+    it('should return 401 when the provided token is invalid or expired', async () => {
+        const response = await request(app)
+            .get('/users/me')
+            .set('Authorization', 'Bearer token-invalido');
+
+        expect(response.status).toBe(401);
+        expect(response.body).toStrictEqual({
+            message: 'Token inválido ou expirado',
+        });
+        expect(userRepository.findById).not.toHaveBeenCalled();
+    });
+
+    it('should return 404 when the user encoded in the token no longer exists in the database', async () => {
+        const token = jwt.sign(
+            { id: 'uuid-aleatorio' },
+            process.env.JWT_SECRET as string,
+            { expiresIn: '1h' },
+        );
+
+        vi.mocked(userRepository.findById).mockResolvedValue(null);
+
+        const response = await request(app)
+            .get('/users/me')
+            .set('Authorization', `Bearer ${token}`);
+
+        expect(response.status).toBe(404);
+        expect(response.body).toStrictEqual({
+            message: 'Usuário não encontrado.',
         });
     });
 });
