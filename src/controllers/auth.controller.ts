@@ -21,9 +21,12 @@ export class AuthController {
         const { email, password } = req.body;
 
         try {
-            const token = await userService.loginUser(email, password);
+            const { accessToken, refreshToken } = await userService.loginUser(
+                email,
+                password,
+            );
 
-            return res.status(200).json({ token });
+            return res.status(200).json({ accessToken, refreshToken });
         } catch (error: unknown) {
             next(error);
         }

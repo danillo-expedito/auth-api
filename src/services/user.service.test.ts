@@ -8,8 +8,10 @@ import {
 } from './fixtures/user.fixtures';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { refreshTokenRepository } from '../repositories/refresh-token.repository';
 
 vi.mock('../repositories/user.repository');
+vi.mock('../repositories/refresh-token.repository');
 vi.mock('bcryptjs');
 vi.mock('jsonwebtoken');
 
@@ -75,15 +77,28 @@ describe('UserService - loginUser (Unit Test)', () => {
                 options: object,
             ) => string,
         ).mockReturnValue('fake-token');
+
+        vi.mocked(refreshTokenRepository.create).mockResolvedValue({
+            id: 'token-id-123',
+            token: 'fake-token',
+            userId: mockUser.id,
+            expiresAt: new Date(),
+            revoked: false,
+            createdAt: new Date(),
+        });
     });
 
-    it('should return a token when credentials are valid', async () => {
+    it('should return an access and refresh token when credentials are valid', async () => {
         const result = await userService.loginUser(
             'leon@email.com',
             'password123',
         );
 
-        expect(result).toBe('fake-token');
+        expect(result).toStrictEqual({
+            accessToken: 'fake-token',
+            refreshToken: 'fake-token',
+        });
+
         expect(userRepository.findByEmail).toHaveBeenCalledWith(
             'leon@email.com',
         );
@@ -97,6 +112,12 @@ describe('UserService - loginUser (Unit Test)', () => {
             expect.any(String),
             expect.any(Object),
         );
+
+        expect(refreshTokenRepository.create).toHaveBeenCalledWith(
+            mockUser.id,
+            'fake-token',
+            expect.any(Date),
+        );
     });
 
     it('should throw UnauthorizedError when email does not exist', async () => {
@@ -105,6 +126,8 @@ describe('UserService - loginUser (Unit Test)', () => {
         await expect(
             userService.loginUser('arthur@email.com', 'password123'),
         ).rejects.toMatchObject(unauthorizedError);
+
+        expect(refreshTokenRepository.create).not.toHaveBeenCalled();
     });
 
     it('should throw UnauthorizedError when password is incorrect', async () => {
@@ -115,6 +138,8 @@ describe('UserService - loginUser (Unit Test)', () => {
         await expect(
             userService.loginUser('leon@email.com', 'senha_errada'),
         ).rejects.toMatchObject(unauthorizedError);
+
+        expect(refreshTokenRepository.create).not.toHaveBeenCalled();
     });
 
     it('should call bcrypt.compare even when user does not exist', async () => {
@@ -125,5 +150,6 @@ describe('UserService - loginUser (Unit Test)', () => {
         ).rejects.toMatchObject(unauthorizedError);
 
         expect(bcrypt.compare).toHaveBeenCalledOnce();
+        expect(refreshTokenRepository.create).not.toHaveBeenCalled();
     });
 });

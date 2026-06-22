@@ -6,6 +6,7 @@ import { mockUser, mockDate } from '../../src/services/fixtures/user.fixtures';
 import jwt from 'jsonwebtoken';
 
 vi.mock('../../src/repositories/user.repository');
+vi.mock('../../src/repositories/refresh-token.repository');
 
 describe('POST /auth/register - Validation Middleware', () => {
     beforeEach(() => {
@@ -141,7 +142,7 @@ describe('POST /auth/login', () => {
         vi.clearAllMocks();
     });
 
-    it('should return 200 and a JWT token when valid credentials are provided', async () => {
+    it('should return 200, an access token, and a refresh token when valid credentials are provided', async () => {
         vi.mocked(userRepository.findByEmail).mockResolvedValue(mockUser);
 
         const response = await request(app).post('/auth/login').send({
@@ -150,10 +151,12 @@ describe('POST /auth/login', () => {
         });
 
         expect(response.status).toBe(200);
-        expect(response.body).toHaveProperty('token');
-        expect(response.body.token).toMatch(
-            /^[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+$/,
-        );
+        expect(response.body).toHaveProperty('accessToken');
+        expect(response.body).toHaveProperty('refreshToken');
+
+        const jwtRegex = /^[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+$/;
+        expect(response.body.accessToken).toMatch(jwtRegex);
+        expect(response.body.refreshToken).toMatch(jwtRegex);
     });
 
     it('should return 401 when the email does not exist in the database', async () => {

@@ -83,6 +83,39 @@ export class UserService {
 
         return userWithouPassword;
     }
+
+    async refreshUserToken(token: string): Promise<{ accessToken: string }> {
+        let decoded: { id: string };
+
+        try {
+            decoded = jwt.verify(token, JWT_SECRET) as unknown as {
+                id: string;
+            };
+        } catch (error) {
+            throw new UnauthorizedError('Token inválido ou expirado');
+        }
+
+        const persistedToken = await refreshTokenRepository.findByToken(token);
+
+        if (!persistedToken || persistedToken.revoked) {
+            throw new UnauthorizedError('Token inválido ou expirado.');
+        }
+
+        const isExpired = new Date() > persistedToken.expiresAt;
+        if (isExpired) {
+            throw new UnauthorizedError('Token inválido ou expirado.');
+        }
+
+        const accessToken = jwt.sign(
+            { id: persistedToken.userId },
+            JWT_SECRET,
+            {
+                expiresIn: JWT_EXPIRES_IN,
+            },
+        );
+
+        return { accessToken };
+    }
 }
 
 export const userService = new UserService();
