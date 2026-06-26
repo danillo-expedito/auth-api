@@ -31,6 +31,19 @@ export class AuthController {
             next(error);
         }
     }
+
+    async refresh(req: Request, res: Response, next: NextFunction) {
+        const { refreshToken } = req.body;
+
+        try {
+            const { accessToken } =
+                await userService.refreshUserToken(refreshToken);
+
+            return res.status(200).json({ accessToken });
+        } catch (error: unknown) {
+            next(error);
+        }
+    }
 }
 
 export const authController = new AuthController();

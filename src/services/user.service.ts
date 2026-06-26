@@ -92,7 +92,7 @@ export class UserService {
                 id: string;
             };
         } catch (error) {
-            throw new UnauthorizedError('Token inválido ou expirado');
+            throw new UnauthorizedError('Token inválido ou expirado.');
         }
 
         const persistedToken = await refreshTokenRepository.findByToken(token);

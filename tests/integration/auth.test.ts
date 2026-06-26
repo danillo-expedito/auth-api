@@ -286,3 +286,21 @@ describe('GET /auth/me - Protected User Profile Route', () => {
         });
     });
 });
+
+describe('POST /auth/refresh', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it('should return 200 and a new access token when a valid refresh token is provided', async () => {
+        // ...
+    });
+
+    it('should return 401 when the refresh token is invalid, expired, or revoked', async () => {
+        // ...
+    });
+
+    it('should return 400 when the refresh token field is missing from the payload (Zod)', async () => {
+        // ...
+    });
+});

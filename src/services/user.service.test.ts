@@ -15,6 +15,11 @@ vi.mock('../repositories/refresh-token.repository');
 vi.mock('bcryptjs');
 vi.mock('jsonwebtoken');
 
+const refreshUnauthorizedError = {
+    message: 'Token inválido ou expirado.',
+    statusCode: 401,
+};
+
 describe('UserService - registerUser (Unit Test)', () => {
     beforeEach(() => {
         vi.clearAllMocks();
@@ -151,5 +156,97 @@ describe('UserService - loginUser (Unit Test)', () => {
 
         expect(bcrypt.compare).toHaveBeenCalledOnce();
         expect(refreshTokenRepository.create).not.toHaveBeenCalled();
+    });
+});
+
+describe('UserService - refreshUserToken (Unit Test)', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+
+        vi.mocked(jwt.verify).mockReturnValue({ id: 'uuid-user-123' } as any);
+    });
+
+    it('should successfully return a new access token when a valid refresh token is provided', async () => {
+        const futureDate = new Date(mockDate);
+        futureDate.setDate(
+            futureDate.setFullYear(futureDate.getFullYear() + 5),
+        );
+
+        vi.mocked(refreshTokenRepository.findByToken).mockResolvedValue({
+            id: 'token-id',
+            token: 'refresh-token-valido',
+            userId: 'uuid-user-123',
+            expiresAt: futureDate,
+            revoked: false,
+            createdAt: mockDate,
+            user: mockUser,
+        });
+
+        const result = await userService.refreshUserToken(
+            'refresh-token-valido',
+        );
+
+        expect(result).toStrictEqual({
+            accessToken: 'fake-token',
+        });
+
+        expect(refreshTokenRepository.findByToken).toHaveBeenCalledWith(
+            'refresh-token-valido',
+        );
+    });
+
+    it('should throw UnauthorizedError when the token is cryptographically invalid or altered', async () => {
+        vi.mocked(jwt.verify).mockImplementation(() => {
+            throw new jwt.JsonWebTokenError('invalid signature');
+        });
+
+        await expect(
+            userService.refreshUserToken('token-adulterado'),
+        ).rejects.toMatchObject(refreshUnauthorizedError);
+
+        expect(refreshTokenRepository.findByToken).not.toHaveBeenCalled();
+    });
+
+    it('should throw UnauthorizedError when the token does not exist in the database', async () => {
+        vi.mocked(refreshTokenRepository.findByToken).mockResolvedValue(null);
+
+        await expect(
+            userService.refreshUserToken('token-inexistente'),
+        ).rejects.toMatchObject(refreshUnauthorizedError);
+    });
+
+    it('should throw UnauthorizedError when the token exists but has been revoked', async () => {
+        vi.mocked(refreshTokenRepository.findByToken).mockResolvedValue({
+            id: 'token-id',
+            token: 'token-revogado',
+            userId: 'uuid-user-123',
+            expiresAt: new Date(mockDate.getTime() + 100000),
+            revoked: true,
+            createdAt: mockDate,
+            user: mockUser,
+        });
+
+        await expect(
+            userService.refreshUserToken('token-revogado'),
+        ).rejects.toMatchObject(refreshUnauthorizedError);
+    });
+
+    it('should throw UnauthorizedError when the token exists but its expiration date has passed', async () => {
+        const yesterday = new Date(mockDate);
+        yesterday.setDate(yesterday.getDate() - 1);
+
+        vi.mocked(refreshTokenRepository.findByToken).mockResolvedValue({
+            id: 'token-id',
+            token: 'token-expirado',
+            userId: 'uuid-user-123',
+            expiresAt: yesterday,
+            revoked: false,
+            createdAt: yesterday,
+            user: mockUser,
+        });
+
+        await expect(
+            userService.refreshUserToken('token-expirado'),
+        ).rejects.toMatchObject(refreshUnauthorizedError);
     });
 });
