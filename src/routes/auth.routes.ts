@@ -1,6 +1,10 @@
 import { Request, Response, NextFunction, Router } from 'express';
 import { authController } from '../controllers/auth.controller';
-import { validateLogin, validateRegister } from '../models/auth.schema';
+import {
+    validateLogin,
+    validateRefresh,
+    validateRegister,
+} from '../models/auth.schema';
 import { createRateLimiter } from '../middlewares/rate-limiter.middleware';
 
 const router: Router = Router();
@@ -27,4 +31,5 @@ router.post(
 
 router.post('/login', loginLimiter, validateLogin, authController.login);
 
+router.post('/refresh', loginLimiter, validateRefresh, authController.refresh);
 export default router;

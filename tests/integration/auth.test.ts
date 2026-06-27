@@ -4,8 +4,10 @@ import app from '../../src/app';
 import { userRepository } from '../../src/repositories/user.repository';
 import { mockUser, mockDate } from '../../src/services/fixtures/user.fixtures';
 import jwt from 'jsonwebtoken';
+import { refreshTokenRepository } from '../../src/repositories/refresh-token.repository';
 
 vi.mock('../../src/repositories/user.repository');
+vi.mock('../../src/repositories/refresh-token.repository');
 
 describe('POST /auth/register - Validation Middleware', () => {
     beforeEach(() => {
@@ -141,7 +143,7 @@ describe('POST /auth/login', () => {
         vi.clearAllMocks();
     });
 
-    it('should return 200 and a JWT token when valid credentials are provided', async () => {
+    it('should return 200, an access token, and a refresh token when valid credentials are provided', async () => {
         vi.mocked(userRepository.findByEmail).mockResolvedValue(mockUser);
 
         const response = await request(app).post('/auth/login').send({
@@ -150,10 +152,12 @@ describe('POST /auth/login', () => {
         });
 
         expect(response.status).toBe(200);
-        expect(response.body).toHaveProperty('token');
-        expect(response.body.token).toMatch(
-            /^[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+$/,
-        );
+        expect(response.body).toHaveProperty('accessToken');
+        expect(response.body).toHaveProperty('refreshToken');
+
+        const jwtRegex = /^[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+$/;
+        expect(response.body.accessToken).toMatch(jwtRegex);
+        expect(response.body.refreshToken).toMatch(jwtRegex);
     });
 
     it('should return 401 when the email does not exist in the database', async () => {
@@ -281,5 +285,72 @@ describe('GET /auth/me - Protected User Profile Route', () => {
         expect(response.body).toStrictEqual({
             message: 'Usuário não encontrado.',
         });
+    });
+});
+
+describe('POST /auth/refresh', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+
+        vi.mocked(refreshTokenRepository.create).mockResolvedValue({
+            id: 'token-id',
+            token: 'fake-token',
+            userId: mockUser.id,
+            expiresAt: new Date(),
+            revoked: false,
+            createdAt: new Date(),
+        });
+    });
+
+    it('should return 200 and a new access token when a valid refresh token is provided', async () => {
+        const validRefreshToken = jwt.sign(
+            { id: mockUser.id },
+            process.env.JWT_SECRET as string,
+            { expiresIn: '7d' },
+        );
+
+        const futureDate = new Date();
+        futureDate.setFullYear(futureDate.getFullYear() + 5);
+
+        vi.mocked(refreshTokenRepository.findByToken).mockResolvedValue({
+            id: 'token-uuid-123',
+            token: validRefreshToken,
+            userId: mockUser.id,
+            expiresAt: futureDate,
+            revoked: false,
+            createdAt: mockDate,
+            user: mockUser,
+        });
+
+        const response = await request(app)
+            .post('/auth/refresh')
+            .send({ refreshToken: validRefreshToken });
+
+        expect(response.status).toBe(200);
+        expect(response.body).toHaveProperty('accessToken');
+
+        const jwtRegex = /^[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+$/;
+        expect(response.body.accessToken).toMatch(jwtRegex);
+    });
+
+    it('should return 401 when the refresh token is invalid, expired, or revoked', async () => {
+        vi.mocked(refreshTokenRepository.findByToken).mockResolvedValue(null);
+
+        const response = await request(app)
+            .post('/auth/refresh')
+            .send({ refreshToken: 'token-inexistente-ou-adulterado' });
+
+        expect(response.status).toBe(401);
+        expect(response.body).toStrictEqual({
+            message: 'Token inválido ou expirado.',
+        });
+    });
+
+    it('should return 400 when the refresh token field is missing from the payload (Zod)', async () => {
+        const response = await request(app).post('/auth/refresh').send({});
+
+        expect(response.status).toBe(400);
+        expect(response.body.message).toBe('Dados de renovação inválidos.');
+        expect(response.body.errors[0].campo).toBe('refreshToken');
     });
 });

@@ -25,6 +25,10 @@ export const loginSchema = z.object({
     password: z.string().min(1, 'A senha é obrigatória'),
 });
 
+export const refreshSchema = z.object({
+    refreshToken: z.string().min(1, 'O refresh token é obrigatório.'),
+});
+
 const createValidationMiddleware = (
     schema: z.ZodSchema,
     errorMessage: string,
@@ -52,4 +56,9 @@ export const validateRegister = createValidationMiddleware(
 export const validateLogin = createValidationMiddleware(
     loginSchema,
     'Dados de login inválidos.',
+);
+
+export const validateRefresh = createValidationMiddleware(
+    refreshSchema,
+    'Dados de renovação inválidos.',
 );
