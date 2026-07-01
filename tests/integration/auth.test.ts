@@ -354,3 +354,63 @@ describe('POST /auth/refresh', () => {
         expect(response.body.errors[0].campo).toBe('refreshToken');
     });
 });
+
+describe('POST /auth/logout', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it('should return 204 and No Content and successfully revoke an active refresh token', async () => {
+        const tokenAtivo = jwt.sign(
+            { id: mockUser.id },
+            process.env.JWT_SECRET as string,
+            { expiresIn: '7d' },
+        );
+
+        vi.mocked(refreshTokenRepository.findByToken).mockResolvedValue({
+            id: 'token-uuid-logout',
+            token: tokenAtivo,
+            userId: mockUser.id,
+            expiresAt: new Date(Date.now() + 100000),
+            revoked: false,
+            createdAt: new Date(),
+            user: mockUser,
+        });
+
+        vi.mocked(refreshTokenRepository.revoke).mockResolvedValue({} as any);
+
+        const response = await request(app)
+            .post('/auth/logout')
+            .send({ refreshToken: tokenAtivo });
+
+        expect(response.status).toBe(204);
+        expect(response.body).toStrictEqual({});
+
+        expect(refreshTokenRepository.revoke).toHaveBeenCalledWith(tokenAtivo);
+    });
+
+    it('should return 401 when trying to logout with a token that does not exist in the database', async () => {
+        vi.mocked(refreshTokenRepository.findByToken).mockResolvedValue(null);
+
+        const response = await request(app)
+            .post('/auth/logout')
+            .send({ refreshToken: 'token-inexistente' });
+
+        expect(response.status).toBe(401);
+        expect(response.body).toStrictEqual({
+            message: 'Token inválido ou expirado.',
+        });
+
+        expect(refreshTokenRepository.revoke).not.toHaveBeenCalled();
+    });
+
+    it('should return 400 when the payload does not contain the refreshToken field (Zod)', async () => {
+        const response = await request(app).post('/auth/logout').send({});
+
+        expect(response.status).toBe(400);
+        expect(response.body.message).toBe('Dados de renovação inválidos.');
+        expect(response.body.errors[0].campo).toBe('refreshToken');
+
+        expect(refreshTokenRepository.revoke).not.toHaveBeenCalled();
+    });
+});
