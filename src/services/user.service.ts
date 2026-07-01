@@ -72,6 +72,16 @@ export class UserService {
         return { accessToken, refreshToken };
     }
 
+    async logoutUser(token: string): Promise<void> {
+        const persistedToken = await refreshTokenRepository.findByToken(token);
+
+        if (!persistedToken || persistedToken.revoked) {
+            throw new UnauthorizedError('Token inválido ou expirado.');
+        }
+
+        await refreshTokenRepository.revoke(token);
+    }
+
     async getMe(id: string) {
         const user = await userRepository.findById(id);
 

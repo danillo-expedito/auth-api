@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { userService } from '../services/user.service';
+import { UserService, userService } from '../services/user.service';
 
 export class AuthController {
     async createUser(req: Request, res: Response, next: NextFunction) {
@@ -27,6 +27,18 @@ export class AuthController {
             );
 
             return res.status(200).json({ accessToken, refreshToken });
+        } catch (error: unknown) {
+            next(error);
+        }
+    }
+
+    async logout(req: Request, res: Response, next: NextFunction) {
+        const { refreshToken } = req.body;
+
+        try {
+            await userService.logoutUser(refreshToken);
+
+            return res.status(204).send();
         } catch (error: unknown) {
             next(error);
         }

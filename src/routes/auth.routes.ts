@@ -32,4 +32,7 @@ router.post(
 router.post('/login', loginLimiter, validateLogin, authController.login);
 
 router.post('/refresh', loginLimiter, validateRefresh, authController.refresh);
+
+router.post('/logout', loginLimiter, validateRefresh, authController.logout);
+
 export default router;
