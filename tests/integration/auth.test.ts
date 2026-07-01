@@ -305,7 +305,7 @@ describe('POST /auth/refresh', () => {
     it('should return 200 and a new access token when a valid refresh token is provided', async () => {
         const validRefreshToken = jwt.sign(
             { id: mockUser.id },
-            process.env.JWT_SECRET as string,
+            process.env.JWT_REFRESH_SECRET as string,
             { expiresIn: '7d' },
         );
 
@@ -408,7 +408,7 @@ describe('POST /auth/logout', () => {
         const response = await request(app).post('/auth/logout').send({});
 
         expect(response.status).toBe(400);
-        expect(response.body.message).toBe('Dados de renovação inválidos.');
+        expect(response.body.message).toBe('Dados de logout inválidos.');
         expect(response.body.errors[0].campo).toBe('refreshToken');
 
         expect(refreshTokenRepository.revoke).not.toHaveBeenCalled();

@@ -8,6 +8,14 @@ const getJwtSecret = (): string => {
     return secret;
 };
 
+const getRefreshJwtSecret = (): string => {
+    const refreshSecret = process.env.JWT_REFRESH_SECRET;
+    if (!refreshSecret) {
+        throw new Error('JWT_REFRESH_SECRET is not defined on .env file');
+    }
+    return refreshSecret;
+};
+
 const VALID_FORMAT = /^\d+[smhdy]$/;
 
 const getExpirationTime = (): NonNullable<SignOptions['expiresIn']> => {
@@ -30,6 +38,7 @@ const getRefreshExpirationTime = (): NonNullable<SignOptions['expiresIn']> => {
 };
 
 export const JWT_SECRET = getJwtSecret();
+export const JWT_REFRESH_SECRET = getRefreshJwtSecret();
 export const JWT_EXPIRES_IN: NonNullable<SignOptions['expiresIn']> =
     getExpirationTime();
 export const JWT_REFRESH_EXPIRES_IN: NonNullable<SignOptions['expiresIn']> =

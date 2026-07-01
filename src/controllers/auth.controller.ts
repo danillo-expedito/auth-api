@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { UserService, userService } from '../services/user.service';
+import { userService } from '../services/user.service';
 
 export class AuthController {
     async createUser(req: Request, res: Response, next: NextFunction) {

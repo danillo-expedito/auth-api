@@ -62,3 +62,8 @@ export const validateRefresh = createValidationMiddleware(
     refreshSchema,
     'Dados de renovação inválidos.',
 );
+
+export const validateLogout = createValidationMiddleware(
+    refreshSchema,
+    'Dados de logout inválidos.',
+);

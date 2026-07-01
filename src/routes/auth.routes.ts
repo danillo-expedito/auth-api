@@ -2,6 +2,7 @@ import { Request, Response, NextFunction, Router } from 'express';
 import { authController } from '../controllers/auth.controller';
 import {
     validateLogin,
+    validateLogout,
     validateRefresh,
     validateRegister,
 } from '../models/auth.schema';
@@ -33,6 +34,6 @@ router.post('/login', loginLimiter, validateLogin, authController.login);
 
 router.post('/refresh', loginLimiter, validateRefresh, authController.refresh);
 
-router.post('/logout', loginLimiter, validateRefresh, authController.logout);
+router.post('/logout', loginLimiter, validateLogout, authController.logout);
 
 export default router;
