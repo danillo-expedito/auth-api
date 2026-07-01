@@ -29,6 +29,28 @@ export const refreshSchema = z.object({
     refreshToken: z.string().min(1, 'O refresh token é obrigatório.'),
 });
 
+export const forgotPasswordSchema = z.object({
+    email: z
+        .string()
+        .regex(
+            /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
+            'Formato de e-mail inválido.',
+        ),
+});
+
+export const resetPasswordSchema = z.object({
+    token: z.string().min(1, 'O token é obrigatório.'),
+    newPassword: z
+        .string()
+        .min(8, 'A senha deve possuir no mínimo 8 caracteres')
+        .regex(/[A-Z]/, 'A senha deve possuir ao menos uma letra maiúscula')
+        .regex(/[0-9]/, 'A senha deve possuir ao menos um número')
+        .regex(
+            /[^a-zA-Z0-9]/,
+            'A senha deve ter ao menos um caractere especial',
+        ),
+});
+
 const createValidationMiddleware = (
     schema: z.ZodSchema,
     errorMessage: string,
@@ -66,4 +88,14 @@ export const validateRefresh = createValidationMiddleware(
 export const validateLogout = createValidationMiddleware(
     refreshSchema,
     'Dados de logout inválidos.',
+);
+
+export const validateForgotPassword = createValidationMiddleware(
+    forgotPasswordSchema,
+    'Dados de recuperação de senha inválidos.',
+);
+
+export const validateResetPassword = createValidationMiddleware(
+    resetPasswordSchema,
+    'Dados de redefinição de senha inválidos.',
 );

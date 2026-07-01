@@ -5,4 +5,6 @@ export const userRepository: UserRepository = {
     findByEmail: vi.fn(),
     findById: vi.fn(),
     create: vi.fn(),
+    update: vi.fn(),
+    updatePassword: vi.fn(),
 };

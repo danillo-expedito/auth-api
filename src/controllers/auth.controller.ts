@@ -56,6 +56,35 @@ export class AuthController {
             next(error);
         }
     }
+
+    async forgotPassword(req: Request, res: Response, next: NextFunction) {
+        const { email } = req.body;
+
+        try {
+            await userService.forgotPassword(email);
+
+            return res.status(202).json({
+                message:
+                    'Se o e-mail estiver registrado, você receberá instruções para redefinir sua senha.',
+            });
+        } catch (error: unknown) {
+            next(error);
+        }
+    }
+
+    async resetPassword(req: Request, res: Response, next: NextFunction) {
+        const { token, newPassword } = req.body;
+
+        try {
+            await userService.resetPassword(token, newPassword);
+
+            return res.status(200).json({
+                message: 'Senha redefinida com sucesso.',
+            });
+        } catch (error: unknown) {
+            next(error);
+        }
+    }
 }
 
 export const authController = new AuthController();

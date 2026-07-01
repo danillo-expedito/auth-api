@@ -9,9 +9,14 @@ import {
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { refreshTokenRepository } from '../repositories/refresh-token.repository';
+import { transporter } from '../config/mailer';
+import { passwordResetTokenRepository } from '../repositories/password-reset-token.repository';
+import { mock } from 'node:test';
 
 vi.mock('../repositories/user.repository');
 vi.mock('../repositories/refresh-token.repository');
+vi.mock('../repositories/password-reset-token.repository');
+vi.mock('../config/mailer');
 vi.mock('bcryptjs');
 vi.mock('jsonwebtoken');
 
@@ -305,5 +310,123 @@ describe('UserService - logoutUser (Unit Test)', () => {
         ).rejects.toMatchObject(refreshUnauthorizedError);
 
         expect(refreshTokenRepository.revoke).not.toHaveBeenCalled();
+    });
+});
+
+describe('UserService - forgotPassword (Unit Test)', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+
+        vi.mocked(transporter.sendMail).mockResolvedValue({} as any);
+    });
+
+    it('should resolve successfully without throwing an error when the email does not exist', async () => {
+        vi.mocked(userRepository.findByEmail).mockResolvedValue(null);
+
+        await expect(
+            userService.forgotPassword('nonexistent@email.com'),
+        ).resolves.not.toThrow();
+
+        expect(transporter.sendMail).not.toHaveBeenCalled();
+    });
+
+    it('should successfully generate a reset token and dispatch an email when the user exists', async () => {
+        vi.mocked(userRepository.findByEmail).mockResolvedValue(mockUser);
+
+        await expect(
+            userService.forgotPassword('existent@email.com'),
+        ).resolves.not.toThrow();
+
+        expect(transporter.sendMail).toHaveBeenCalled();
+        expect(passwordResetTokenRepository.create).toHaveBeenCalled();
+    });
+});
+
+describe('UserService - resetPassword (Unit Test)', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it('should successfully update the user password when a valid reset token is provided', async () => {
+        const validToken = 'valid-reset-token';
+
+        const newPassword = 'NewPassword123@';
+
+        vi.mocked(passwordResetTokenRepository.findByToken).mockResolvedValue({
+            id: 'token-id',
+            token: validToken,
+            userId: mockUser.id,
+            expiresAt: new Date(Date.now() + 15 * 60 * 1000), // 15 minutes in the future
+            used: false,
+            createdAt: mockDate,
+            user: mockUser,
+        });
+
+        await expect(
+            userService.resetPassword(validToken, newPassword),
+        ).resolves.not.toThrow();
+
+        expect(passwordResetTokenRepository.findByToken).toHaveBeenCalledWith(
+            validToken,
+        );
+        expect(bcrypt.hash).toHaveBeenCalledWith(newPassword, 10);
+        expect(passwordResetTokenRepository.markAsUsed).toHaveBeenCalledWith(
+            validToken,
+        );
+    });
+
+    it('should throw BadRequestError when the reset token does not exist in the database', async () => {
+        vi.mocked(passwordResetTokenRepository.findByToken).mockResolvedValue(
+            null,
+        );
+
+        await expect(
+            userService.resetPassword('nonexistent-token', 'NewPassword123@'),
+        ).rejects.toThrow('Token inválido ou expirado.');
+
+        expect(passwordResetTokenRepository.markAsUsed).not.toHaveBeenCalled();
+    });
+
+    it('should throw BadRequestError when the reset token has already been consumed', async () => {
+        const usedToken = 'used-reset-token';
+
+        vi.mocked(passwordResetTokenRepository.findByToken).mockResolvedValue({
+            id: 'token-id',
+            token: usedToken,
+            userId: mockUser.id,
+            expiresAt: new Date(mockDate.getTime() + 100000),
+            used: true,
+            createdAt: mockDate,
+            user: mockUser,
+        });
+
+        await expect(
+            userService.resetPassword(usedToken, 'NewPassword123@'),
+        ).rejects.toThrow('Token inválido ou expirado.');
+
+        expect(passwordResetTokenRepository.markAsUsed).not.toHaveBeenCalled();
+    });
+
+    it('should throw BadRequestError when the reset token window window has expired', async () => {
+        const expiredToken = 'expired-reset-token';
+
+        const pastDate = new Date(mockDate);
+        pastDate.setMinutes(pastDate.getMinutes() - 30);
+
+        vi.mocked(passwordResetTokenRepository.findByToken).mockResolvedValue({
+            id: 'token-id',
+            token: expiredToken,
+            userId: mockUser.id,
+            expiresAt: pastDate,
+            used: false,
+            createdAt: mockDate,
+            user: mockUser,
+        });
+
+        await expect(
+            userService.resetPassword(expiredToken, 'NewPassword123@'),
+        ).rejects.toThrow('Token inválido ou expirado.');
+
+        expect(passwordResetTokenRepository.markAsUsed).not.toHaveBeenCalled();
     });
 });

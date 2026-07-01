@@ -13,6 +13,10 @@ import {
 } from '../config/env';
 import { NotFoundError } from '../errors/NotFoundError';
 import { refreshTokenRepository } from '../repositories/refresh-token.repository';
+import { passwordResetTokenRepository } from '../repositories/password-reset-token.repository';
+import { transporter } from '../config/mailer';
+import crypto from 'crypto';
+import { BadRequestError } from '../errors/BadRequestError';
 
 // Hash fixo usado para mitigar timing attacks quando o usuário não existe
 // (gerado com bcrypt.hashSync('dummy_password', 10))
@@ -96,12 +100,8 @@ export class UserService {
     }
 
     async refreshUserToken(token: string): Promise<{ accessToken: string }> {
-        let decoded: { id: string };
-
         try {
-            decoded = jwt.verify(token, JWT_REFRESH_SECRET) as unknown as {
-                id: string;
-            };
+            jwt.verify(token, JWT_REFRESH_SECRET);
         } catch (error) {
             throw new UnauthorizedError('Token inválido ou expirado.');
         }
@@ -125,6 +125,52 @@ export class UserService {
         );
 
         return { accessToken };
+    }
+
+    async forgotPassword(email: string): Promise<void> {
+        const user = await userRepository.findByEmail(email);
+
+        if (!user) {
+            return;
+        }
+
+        const resetToken = crypto.randomBytes(32).toString('hex');
+        const resetTokenExpiresAt = new Date();
+        resetTokenExpiresAt.setMinutes(resetTokenExpiresAt.getMinutes() + 15);
+
+        await passwordResetTokenRepository.create(
+            user.id,
+            resetToken,
+            resetTokenExpiresAt,
+        );
+
+        await transporter.sendMail({
+            from: process.env.SMTP_FROM,
+            to: user.email,
+            subject: 'Redefinição de senha',
+            html: `<p>Olá, ${user.name}!</p>
+                    <p>Clique no link abaixo para redefinir sua senha:</p>
+                    <a href="${process.env.FRONTEND_URL}/reset-password?token=${resetToken}" target="_blank">Redefinir senha</a>
+                    <p>Este link expira em 15 minutos.</p>`,
+        });
+    }
+
+    async resetPassword(token: string, newPassword: string): Promise<void> {
+        const resetToken =
+            await passwordResetTokenRepository.findByToken(token);
+
+        if (
+            !resetToken ||
+            resetToken.used ||
+            new Date() > resetToken.expiresAt
+        ) {
+            throw new BadRequestError('Token inválido ou expirado.');
+        }
+
+        const hash = await bcrypt.hash(newPassword, 10);
+
+        await userRepository.updatePassword(resetToken.userId, hash);
+        await passwordResetTokenRepository.markAsUsed(token);
     }
 }
 
