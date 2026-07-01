@@ -92,7 +92,7 @@ export const validateLogout = createValidationMiddleware(
 
 export const validateForgotPassword = createValidationMiddleware(
     forgotPasswordSchema,
-    'Dados de esquecimento de senha inválidos.',
+    'Dados de recuperação de senha inválidos.',
 );
 
 export const validateResetPassword = createValidationMiddleware(

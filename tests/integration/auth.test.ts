@@ -5,9 +5,13 @@ import { userRepository } from '../../src/repositories/user.repository';
 import { mockUser, mockDate } from '../../src/services/fixtures/user.fixtures';
 import jwt from 'jsonwebtoken';
 import { refreshTokenRepository } from '../../src/repositories/refresh-token.repository';
+import { transporter } from '../../src/config/mailer';
+import { passwordResetTokenRepository } from '../../src/repositories/password-reset-token.repository';
 
 vi.mock('../../src/repositories/user.repository');
 vi.mock('../../src/repositories/refresh-token.repository');
+vi.mock('../../src/repositories/password-reset-token.repository');
+vi.mock('../../src/config/mailer');
 
 describe('POST /auth/register - Validation Middleware', () => {
     beforeEach(() => {
@@ -412,5 +416,110 @@ describe('POST /auth/logout', () => {
         expect(response.body.errors[0].campo).toBe('refreshToken');
 
         expect(refreshTokenRepository.revoke).not.toHaveBeenCalled();
+    });
+});
+
+describe('POST /auth/forgot-password', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+
+        vi.mocked(transporter.sendMail).mockResolvedValue({} as any);
+    });
+
+    it('should return 202 Accepted even if the provided email does not exist in the system', async () => {
+        vi.mocked(userRepository.findByEmail).mockResolvedValue(null);
+
+        const response = await request(app)
+            .post('/auth/forgot-password')
+            .send({ email: 'nonexistent@email.com' });
+
+        expect(response.status).toBe(202);
+        expect(response.body).toStrictEqual({
+            message:
+                'Se o e-mail estiver registrado, você receberá instruções para redefinir sua senha.',
+        });
+        expect(transporter.sendMail).not.toHaveBeenCalled();
+    });
+
+    it('should return 202 Accepted and trigger the recovery process when a registered email is provided', async () => {
+        vi.mocked(userRepository.findByEmail).mockResolvedValue(mockUser);
+
+        const response = await request(app)
+            .post('/auth/forgot-password')
+            .send({ email: 'leon@email.com' });
+
+        expect(response.status).toBe(202);
+        expect(response.body).toStrictEqual({
+            message:
+                'Se o e-mail estiver registrado, você receberá instruções para redefinir sua senha.',
+        });
+        expect(transporter.sendMail).toHaveBeenCalled();
+    });
+
+    it('should return 400 Bad Request when the email format violates Zod validation boundaries', async () => {
+        const response = await request(app)
+            .post('/auth/forgot-password')
+            .send({ email: 'invalid-email-format' });
+
+        expect(response.status).toBe(400);
+        expect(response.body.message).toBe(
+            'Dados de recuperação de senha inválidos.',
+        );
+        expect(response.body.errors[0].campo).toBe('email');
+    });
+});
+
+describe('POST /auth/reset-password', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+
+        vi.mocked(transporter.sendMail).mockResolvedValue({} as any);
+    });
+
+    it('should return 200 OK and update credentials when both token and new password meet criteria', async () => {
+        const validResetToken = 'valid-reset-token';
+
+        vi.mocked(passwordResetTokenRepository.findByToken).mockResolvedValue({
+            id: 'token-uuid-123',
+            token: validResetToken,
+            userId: mockUser.id,
+            expiresAt: new Date(Date.now() + 15 * 60 * 1000),
+            used: false,
+            createdAt: new Date(),
+            user: mockUser,
+        });
+
+        const response = await request(app)
+            .post('/auth/reset-password')
+            .send({ token: validResetToken, newPassword: 'NewPassword123@' });
+
+        expect(response.status).toBe(200);
+        expect(response.body).toStrictEqual({
+            message: 'Senha redefinida com sucesso.',
+        });
+    });
+
+    it('should return 400 Bad Request when the reset token query or parameter is structurally invalid', async () => {
+        const response = await request(app)
+            .post('/auth/reset-password')
+            .send({ token: '', newPassword: 'NewPassword123@' });
+
+        expect(response.status).toBe(400);
+        expect(response.body.message).toBe(
+            'Dados de redefinição de senha inválidos.',
+        );
+        expect(response.body.errors[0].campo).toBe('token');
+    });
+
+    it('should return 400 Bad Request when the new password does not meet complexity rules (Zod)', async () => {
+        const response = await request(app)
+            .post('/auth/reset-password')
+            .send({ token: 'valid-reset-token', newPassword: 'short' });
+
+        expect(response.status).toBe(400);
+        expect(response.body.message).toBe(
+            'Dados de redefinição de senha inválidos.',
+        );
+        expect(response.body.errors[0].campo).toBe('newPassword');
     });
 });
