@@ -32,6 +32,18 @@ export class AuthController {
         }
     }
 
+    async logout(req: Request, res: Response, next: NextFunction) {
+        const { refreshToken } = req.body;
+
+        try {
+            await userService.logoutUser(refreshToken);
+
+            return res.status(204).send();
+        } catch (error: unknown) {
+            next(error);
+        }
+    }
+
     async refresh(req: Request, res: Response, next: NextFunction) {
         const { refreshToken } = req.body;
 

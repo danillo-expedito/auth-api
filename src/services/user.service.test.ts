@@ -250,3 +250,60 @@ describe('UserService - refreshUserToken (Unit Test)', () => {
         ).rejects.toMatchObject(refreshUnauthorizedError);
     });
 });
+
+describe('UserService - logoutUser (Unit Test)', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it('should successfully revoke the refresh token when a valid token is provided', async () => {
+        vi.mocked(refreshTokenRepository.findByToken).mockResolvedValue({
+            id: 'token-id-logout',
+            token: 'refresh-token-valido',
+            userId: 'uuid-user-123',
+            expiresAt: new Date(mockDate.getTime() + 100000),
+            revoked: false,
+            createdAt: mockDate,
+            user: mockUser,
+        });
+
+        await expect(
+            userService.logoutUser('refresh-token-valido'),
+        ).resolves.not.toThrow();
+
+        expect(refreshTokenRepository.findByToken).toHaveBeenCalledWith(
+            'refresh-token-valido',
+        );
+        expect(refreshTokenRepository.revoke).toHaveBeenCalledWith(
+            'refresh-token-valido',
+        );
+    });
+
+    it('should throw UnauthorizedError when trying to logout with a non-existent token', async () => {
+        vi.mocked(refreshTokenRepository.findByToken).mockResolvedValue(null);
+
+        await expect(
+            userService.logoutUser('token-inexistente'),
+        ).rejects.toMatchObject(refreshUnauthorizedError);
+
+        expect(refreshTokenRepository.revoke).not.toHaveBeenCalled();
+    });
+
+    it('should throw UnauthorizedError when trying to logout with a token that is already revoked', async () => {
+        vi.mocked(refreshTokenRepository.findByToken).mockResolvedValue({
+            id: 'token-id',
+            token: 'refresh-token-revogado',
+            userId: 'uuid-user-123',
+            expiresAt: new Date(mockDate.getTime() + 100000),
+            revoked: true,
+            createdAt: mockDate,
+            user: mockUser,
+        });
+
+        await expect(
+            userService.logoutUser('refresh-token-revogado'),
+        ).rejects.toMatchObject(refreshUnauthorizedError);
+
+        expect(refreshTokenRepository.revoke).not.toHaveBeenCalled();
+    });
+});

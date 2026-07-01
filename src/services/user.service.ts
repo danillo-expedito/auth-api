@@ -9,6 +9,7 @@ import {
     JWT_EXPIRES_IN,
     JWT_SECRET,
     calculateRefreshExpiresAt,
+    JWT_REFRESH_SECRET,
 } from '../config/env';
 import { NotFoundError } from '../errors/NotFoundError';
 import { refreshTokenRepository } from '../repositories/refresh-token.repository';
@@ -61,7 +62,7 @@ export class UserService {
             expiresIn: JWT_EXPIRES_IN,
         });
 
-        const refreshToken = jwt.sign({ id: user.id }, JWT_SECRET, {
+        const refreshToken = jwt.sign({ id: user.id }, JWT_REFRESH_SECRET, {
             expiresIn: JWT_REFRESH_EXPIRES_IN,
         });
 
@@ -70,6 +71,16 @@ export class UserService {
         await refreshTokenRepository.create(user.id, refreshToken, expiresAt);
 
         return { accessToken, refreshToken };
+    }
+
+    async logoutUser(token: string): Promise<void> {
+        const persistedToken = await refreshTokenRepository.findByToken(token);
+
+        if (!persistedToken || persistedToken.revoked) {
+            throw new UnauthorizedError('Token inválido ou expirado.');
+        }
+
+        await refreshTokenRepository.revoke(token);
     }
 
     async getMe(id: string) {
@@ -88,7 +99,7 @@ export class UserService {
         let decoded: { id: string };
 
         try {
-            decoded = jwt.verify(token, JWT_SECRET) as unknown as {
+            decoded = jwt.verify(token, JWT_REFRESH_SECRET) as unknown as {
                 id: string;
             };
         } catch (error) {
@@ -97,12 +108,11 @@ export class UserService {
 
         const persistedToken = await refreshTokenRepository.findByToken(token);
 
-        if (!persistedToken || persistedToken.revoked) {
-            throw new UnauthorizedError('Token inválido ou expirado.');
-        }
-
-        const isExpired = new Date() > persistedToken.expiresAt;
-        if (isExpired) {
+        if (
+            !persistedToken ||
+            persistedToken.revoked ||
+            new Date() > persistedToken.expiresAt
+        ) {
             throw new UnauthorizedError('Token inválido ou expirado.');
         }
 
